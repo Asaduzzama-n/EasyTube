@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "EasyTube",
+  "version": "1.0",
+  "description": "Schedule and play YouTube videos sequentially with minimal interaction.",
+  "permissions": ["activeTab", "scripting", "storage","tabs"],
+  "host_permissions": ["*://www.youtube.com/*"],
+  "action": {
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "icon.png",
+      "48": "icon.png",
+      "128": "icon.png"
+    }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["assets/add.png"],
+      "matches": ["*://www.youtube.com/*"]
+    }
+  ],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
+  },
+  "content_scripts": [
+    {
+      "matches": ["*://www.youtube.com/*"],
+      "js": ["content.js"]
+    }
+  ],
+  "background": {
+    "service_worker": "background.js"
+  }
+}

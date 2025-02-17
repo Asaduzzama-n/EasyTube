@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EasyTube</title>
+    <style>
+        body { width: 350px; font-family: Arial, sans-serif; padding: 10px; }
+        h2 { text-align: center; }
+        .video-item { 
+            display: flex; align-items: center; 
+            background: #f9f9f9; padding: 5px; 
+            margin: 5px 0; border-radius: 8px; 
+            box-shadow: 1px 1px 5px rgba(0,0,0,0.1);
+        }
+        .thumbnail { width: 60px; height: 40px; margin-right: 10px; border-radius: 5px; }
+        .video-details { flex: 1; overflow: hidden; }
+        .video-title { font-size: 14px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .video-meta { font-size: 12px; color: gray; }
+        .play-btn, .remove-btn { cursor: pointer; font-size: 16px; margin-left: 10px; }
+        .play-btn { color: green; }
+        .remove-btn { color: red; }
+        .now-playing { background: #d1ecf1; border-left: 4px solid #17a2b8; }
+        .controls { text-align: center; margin-top: 10px; }
+        #playAll { padding: 8px 15px; font-size: 16px; cursor: pointer; background: #007bff; color: white; border: none; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h2>EasyTube Playlist</h2>
+    <div id="playlist"></div>
+    <div class="controls">
+        <button id="playAll">▶ Play All</button>
+    </div>
+    <script src="popup.js"></script>
+</body>
+</html>
