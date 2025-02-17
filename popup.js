@@ -4,20 +4,21 @@ document.addEventListener("DOMContentLoaded", () => {
 
     function loadPlaylist() {
         chrome.storage.local.get({ playlist: [], currentIndex: -1 }, (data) => {
-            playlistContainer.innerHTML = ""; // Clear old list
+            playlistContainer.innerHTML = "";
 
             data.playlist.forEach((video, index) => {
                 const videoElement = document.createElement("div");
                 videoElement.className = "video-item";
 
                 if (index === data.currentIndex) {
-                    videoElement.classList.add("now-playing"); // Highlight current video
+                    videoElement.classList.add("now-playing");
                 }
 
                 videoElement.innerHTML = `
-                    <img class="thumbnail" src="https://img.youtube.com/vi/${video.id}/default.jpg">
+                    <img class="thumbnail" src="${video.thumbnail}">
                     <div class="video-details">
                         <div class="video-title">${video.title}</div>
+                        <div class="video-meta">🎬 ${video.channelName} | 👍 ${video.likeCount} | ⏳ ${formatTime(video.duration)}</div>
                         <div class="video-meta">${index === data.currentIndex ? "▶ Now Playing" : index === data.currentIndex + 1 ? "⏭ Next" : ""}</div>
                     </div>
                     <span class="play-btn" data-index="${index}">▶</span>
@@ -45,8 +46,8 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.storage.local.set({ currentIndex: index }, () => {
             chrome.storage.local.get({ playlist: [] }, (data) => {
                 if (data.playlist.length > index) {
-                    chrome.tabs.create({ url: data.playlist[index].url });
-                    loadPlaylist(); // Refresh UI
+                    chrome.tabs.update({ url: data.playlist[index].url });
+                    loadPlaylist();
                 }
             });
         });
@@ -68,11 +69,37 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.storage.local.set({ currentIndex: index }, () => {
             chrome.storage.local.get({ playlist: [] }, (data) => {
                 if (index >= data.playlist.length) return;
-                chrome.tabs.create({ url: data.playlist[index].url });
 
-                setTimeout(() => playSequentially(index + 1), 10000);
+                chrome.tabs.update({ url: data.playlist[index].url });
+
+                setTimeout(() => {
+                    monitorVideoEnd(() => playSequentially(index + 1));
+                }, 3000);
             });
         });
+    }
+
+    function monitorVideoEnd(callback) {
+        chrome.tabs.executeScript({
+            code: `
+                let video = document.querySelector("video");
+                if (video) {
+                    video.addEventListener("ended", () => { chrome.runtime.sendMessage({ action: "nextVideo" }); });
+                }
+            `
+        });
+
+        chrome.runtime.onMessage.addListener((message) => {
+            if (message.action === "nextVideo") {
+                callback();
+            }
+        });
+    }
+
+    function formatTime(seconds) {
+        const min = Math.floor(seconds / 60);
+        const sec = Math.floor(seconds % 60);
+        return `${min}:${sec < 10 ? '0' : ''}${sec}`;
     }
 
     loadPlaylist();
