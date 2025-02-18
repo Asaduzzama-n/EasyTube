@@ -46,18 +46,29 @@ document.addEventListener("DOMContentLoaded", () => {
         chrome.storage.local.set({ currentIndex: index }, () => {
             chrome.storage.local.get({ playlist: [] }, (data) => {
                 if (data.playlist.length > index) {
-                    chrome.tabs.update({ url: data.playlist[index].url });
-                    loadPlaylist();
+                    chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                        if (tabs.length === 0) return;
+                        chrome.tabs.update(tabs[0].id, { url: data.playlist[index].url });
+                        loadPlaylist();
+                    });
                 }
             });
         });
     }
 
     function removeFromPlaylist(index) {
-        chrome.storage.local.get({ playlist: [] }, (data) => {
+        chrome.storage.local.get({ playlist: [], currentIndex: -1 }, (data) => {
             let playlist = data.playlist;
+            let newIndex = data.currentIndex;
+
+            if (index < newIndex) {
+                newIndex--; // Shift index back if previous video is removed
+            } else if (index === newIndex) {
+                newIndex = -1; // Reset if current video is removed
+            }
+
             playlist.splice(index, 1);
-            chrome.storage.local.set({ playlist }, loadPlaylist);
+            chrome.storage.local.set({ playlist, currentIndex: newIndex }, loadPlaylist);
         });
     }
 
@@ -70,29 +81,45 @@ document.addEventListener("DOMContentLoaded", () => {
             chrome.storage.local.get({ playlist: [] }, (data) => {
                 if (index >= data.playlist.length) return;
 
-                chrome.tabs.update({ url: data.playlist[index].url });
+                chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+                    if (tabs.length === 0) return;
+                    let tabId = tabs[0].id;
 
-                setTimeout(() => {
-                    monitorVideoEnd(() => playSequentially(index + 1));
-                }, 3000);
+                    chrome.tabs.update(tabId, { url: data.playlist[index].url });
+
+                    setTimeout(() => {
+                        monitorVideoEnd(() => playSequentially(index + 1));
+                    }, 3000);
+                });
             });
         });
     }
 
     function monitorVideoEnd(callback) {
-        chrome.tabs.executeScript({
-            code: `
-                let video = document.querySelector("video");
-                if (video) {
-                    video.addEventListener("ended", () => { chrome.runtime.sendMessage({ action: "nextVideo" }); });
-                }
-            `
-        });
+        chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+            if (tabs.length === 0) return;
+            let tabId = tabs[0].id;
 
-        chrome.runtime.onMessage.addListener((message) => {
-            if (message.action === "nextVideo") {
-                callback();
-            }
+            chrome.scripting.executeScript({
+                target: { tabId: tabId },
+                func: () => {
+                    let video = document.querySelector("video");
+                    if (video) {
+                        video.addEventListener("ended", () => {
+                            chrome.runtime.sendMessage({ action: "nextVideo" });
+                        });
+                    }
+                }
+            });
+
+            const messageListener = (message) => {
+                if (message.action === "nextVideo") {
+                    callback();
+                }
+            };
+
+            chrome.runtime.onMessage.removeListener(messageListener);
+            chrome.runtime.onMessage.addListener(messageListener);
         });
     }
 

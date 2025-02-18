@@ -1,3 +1,4 @@
+// Function to add the "Add to Playlist" button
 function addPlaylistButton() {
     const buttonsContainer = document.querySelector("#top-level-buttons-computed");
 
@@ -12,19 +13,14 @@ function addPlaylistButton() {
 
     addButton.addEventListener("click", async () => {
         const videoId = new URL(window.location.href).searchParams.get("v");
+        if (!videoId) return;
+
         const videoTitle = document.title.replace(" - YouTube", "");
         const channelName = document.querySelector("#owner #channel-name a")?.innerText || "Unknown";
         const likeCount = document.querySelector("#top-level-buttons-computed yt-formatted-string[aria-label*='likes']")?.innerText || "0";
 
         const duration = await getVideoDuration();
         const thumbnailUrl = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-
-        console.log("Video ID:", videoId);
-        console.log("Video Title:", videoTitle);
-        console.log("Channel Name:", channelName);
-        console.log("Like Count:", likeCount);
-        console.log("Duration:", duration);
-        console.log("Thumbnail URL:", thumbnailUrl);
 
         const videoData = { videoId, title: videoTitle, channelName, likeCount, duration, url: window.location.href, thumbnail: thumbnailUrl };
 
@@ -44,12 +40,12 @@ function addPlaylistButton() {
     buttonsContainer.appendChild(addButton);
 }
 
-// Function to reliably fetch video duration
+// Function to fetch video duration reliably
 async function getVideoDuration() {
     return new Promise((resolve) => {
         let attempts = 0;
-        const maxAttempts = 10; // Try up to 10 times
-        const interval = 500; // Check every 500ms
+        const maxAttempts = 10;
+        const interval = 500;
 
         function checkDuration() {
             const videoElement = document.querySelector("video");
@@ -60,13 +56,12 @@ async function getVideoDuration() {
             }
 
             if (videoElement.readyState >= 1 && !isNaN(videoElement.duration)) {
-                console.log("Video duration found:", videoElement.duration);
                 return resolve(formatDuration(videoElement.duration));
             }
 
             attempts++;
             if (attempts < maxAttempts) {
-                setTimeout(checkDuration, interval); // Retry
+                setTimeout(checkDuration, interval);
             } else {
                 console.log("Failed to fetch video duration after multiple attempts.");
                 resolve("Unknown");
@@ -86,5 +81,42 @@ function formatDuration(seconds) {
     return h > 0 ? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}` : `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-// Run add button logic every 5 seconds
-setInterval(addPlaylistButton, 5000);
+// Function to play the next video in the playlist
+function playNextVideo() {
+    chrome.storage.local.get({ playlist: [] }, (data) => {
+        const videoId = new URL(window.location.href).searchParams.get("v");
+        const currentIndex = data.playlist.findIndex(video => video.videoId === videoId);
+
+        if (currentIndex !== -1 && currentIndex + 1 < data.playlist.length) {
+            const nextVideoUrl = data.playlist[currentIndex + 1].url;
+            console.log("Playing next video:", nextVideoUrl);
+            window.location.href = nextVideoUrl; // Redirect to next video
+        }
+    });
+}
+
+// Function to detect when a video ends and trigger the next video
+function detectVideoEnd() {
+    const video = document.querySelector("video");
+    if (!video) return;
+
+    video.addEventListener("ended", () => {
+        console.log("Current video ended. Moving to next video...");
+        setTimeout(playNextVideo, 2000); // Wait 2 seconds before switching
+    });
+}
+
+// Function to observe DOM changes and add the playlist button dynamically
+function observeDOMChanges() {
+    const observer = new MutationObserver(() => {
+        addPlaylistButton();
+        detectVideoEnd();
+    });
+
+    observer.observe(document.body, { childList: true, subtree: true });
+}
+
+// Initialize functions
+addPlaylistButton();
+detectVideoEnd();
+observeDOMChanges();
